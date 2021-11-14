@@ -1,0 +1,180 @@
+; ----- ROM
+0     ; U0
+4096  ; U1
+8192  ; U2
+12288 ; U3
+16384 ; U4
+20480 ; U5
+24576 ; U6
+28672 ; U7
+32768 ; U8
+36864 ; U9
+40960 ; U10
+45056 ; U11
+49152 ; U12
+53248 ; U13
+57344 ; U14
+61440 ; U15
+65535 ; UM
+0     ; UT
+
+
+
+; ----- Assembler Program (assembles assembly code)
+; start
+LAA i1* ; start - end
+SBA i0*
+STR v0*
+LDA 0
+JIE ~+4
+ADA i0* ; not negative
+STR v1*
+JMP ~+6
+ADA i1* ; negative
+STR v1*
+LAA i0*
+SBA i1*
+STR v0*
+
+// Pseudo Code
+
+// targetStruct key (waiting for...):
+// 0 - op-code
+// 1 - label
+// 2 - comment
+// 3 - operand
+
+word i codeStartPos, // assembly code start point
+     i codeEndPos, // assembly code end point
+     v codeSize, // assembly code size
+     v readPos, // position in code
+     v activeWord, // word being read
+     v activeByte, // byte being read
+     v targetStruct, // type of target structure
+     v charsStored, // characters stored
+     v tempStore[50];
+
+
+codeSize = codeEndPos - codeStartPos;
+if(codeSize is positive)
+{
+	readPos = codeStartPos;
+}
+else
+{
+	readPos = codeEndPos;
+	codeSize = codeStartPos - codeEndPos;
+}
+
+targetStruct = 0;
+
+while(readPos <= codeSize)
+{
+	activeWord = ram[readPos];
+
+	for(int i = 1; i >= 0; i--)
+	{
+		activeByte = byteSel(activeWord, i); // When "i" is 1: Upper byte is selected. When "i" is 0: Lower byte is selected.
+
+		switch(targetStruct)
+		{
+			case 0: // op-code
+				if(activeByte == ";")
+				{
+					targetStruct += 2;
+				}
+				else if(activeByte == ".")
+				{
+					if(charsStored > 0)
+					{
+						return syntax error // Token "." was not expected
+					}
+					targetStruct += 1;
+				}
+				else
+				{
+					tempStore[charsStored] = activeByte;
+					charsStored += 1;
+
+					if(charsStored == 3)
+					{
+						
+					}
+				}
+				break;
+			case 1: // label
+				if("A" <= activeByte <= "Z" and "a" <= activeByte <= "A")
+				{
+					
+				}
+				else
+				{
+					return syntax error // Special character " " was not expected
+				}
+				break;
+			case 2: // comment
+				if(activeByte == "\n")
+					targetStruct -= 2;
+				break;
+			case 3: // operand
+				break;
+		}
+	}
+}
+
+
+; ----- Multiply
+; start
+LAA i0*
+ADA U0*
+STR v0*
+LAA v0*
+ADA U0*
+STR UT*
+JIZ end
+LAA v1*
+ADA i1*
+STR v1*
+LAA v0*
+SBA U1*
+STR v0*
+JMP 3
+U0 ; (14)
+U1 ; (15)
+UT ; (16)
+i0 ; (17)
+i1 ; (18)
+v0 ; (19)
+v1 ; (20)
+; end
+
+
+; ----- Number doubler (double i0, i1 number of times (if i0 = 4 and i1 = 3, then v1 = 16))
+; Can you spot the difference between this program and the "Multiply" program?
+; start
+LAA i0*
+ADA U0*
+STR v0*
+LAA i1*
+STR v1*
+LAA v0*
+ADA U0*
+STR UT*
+JIZ end
+LAA v1*
+ADA v1*
+STR v1*
+LAA v0*
+SBA U1*
+STR v0*
+JMP 5
+U0 ; (16)
+U1 ; (17)
+UT ; (18)
+i0 ; (19)
+i1 ; (20)
+v0 ; (21)
+v1 ; (22)
+; end
+; assembled executable:
+; 4115 16400 24597 4116 24598 4117 16400 24594 32791 4118 16406 24598 4117 20497 24597 28677 0 1 0 9 6 0 0 53270
