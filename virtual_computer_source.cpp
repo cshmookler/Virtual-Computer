@@ -33,9 +33,7 @@
    const char * WIN_ICON_DIR = "assets/icon.ico";
 
    // Timer constants
-   const int TIMER_INIT = 1,
-             TIMER_FRAME = 2,
-             TIMER_MAIN = 3;
+   const int TIMER_MAIN = 1;
 
    // Virtual Computer constants
    const int VC_CLOCK_SPEED = 1000, // Instructions executed per second
@@ -154,7 +152,7 @@ int main(int argc, char** argv)
    source.close();
 
    // Start timers
-   glutTimerFunc(1000 / VC_CLOCK_SPEED, WIN_main, TIMER_MAIN);
+   glutTimerFunc(2000 / VC_CLOCK_SPEED, WIN_main, TIMER_MAIN);
 
    // Display test
    for(GLubyte x = 0; x < PIXEL_COUNT_X; x++)
@@ -177,7 +175,7 @@ int main(int argc, char** argv)
 void WIN_main(int timerId)
 {
    // Reset main timer
-   glutTimerFunc(1000 / VC_CLOCK_SPEED, WIN_main, TIMER_MAIN);
+   glutTimerFunc(2000 / VC_CLOCK_SPEED, WIN_main, TIMER_MAIN);
 
    // Virtual Computer executes one instruction and updates the display if requested
    if(VC_main() == 1)
