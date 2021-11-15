@@ -83,7 +83,7 @@
 		aluOp = 0,
 
 		// Temporarily store input sent to from certain output devices
-		VC_IH_cache[4096][2] = {0}, // first is origin device, second is data
+		VC_IH_cache[4096] = {0}, // words with even indices are the origin device and words with odd indices are the input data
 		VC_IH_cache_stored = 0,
 		VC_IH_cache_pos = 0,
 
