@@ -1,5 +1,4 @@
 #include <GL/freeglut.h>
-#include <sstream>
 #include <iostream>
 #include <fstream>
 
