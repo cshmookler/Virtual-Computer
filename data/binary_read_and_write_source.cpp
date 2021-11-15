@@ -1,35 +1,36 @@
 #include <iostream>
 #include <fstream>
 
+bool verifyFileOpen(std::ifstream & source, std::ofstream & target);
+
 int main(int argc, char** argv)
 {
+	std::cout << std::endl;
+
 	if(argc != 4)
 	{
 		std::cout << "Error: Incorrect number of arguments" << std::endl;
 		return 0;
 	}
 
-	if((char)argv[1][0] == (char)"r"[0])
+	if((char)argv[1][0] == (char)"r"[0]) // Check if reading is the specified operation
 	{
 		char c;
 		int tempNum,
 			num;
 		bool byteType = true;
 
+		// Open Files
 		std::ifstream source(argv[2], std::ios::binary);
-		if(!source.is_open())
-		{
-			std::cout << "Error: The source file failed to open" << std::endl;
-			return 0;
-		}
-
 		std::ofstream target(argv[3], std::ios::trunc);
-		if(!target.is_open())
+
+		// Verify that the files are open
+		if(!verifyFileOpen(source, target))
 		{
-			std::cout << "Error: The target file failed to open" << std::endl;
 			return 0;
 		}
 
+		// Convert binary numbers to ASCII and write to the target.
 		while(source.get(c))
 		{
 			tempNum = (int)c;
@@ -43,29 +44,27 @@ int main(int argc, char** argv)
 			byteType = !byteType;
 		}
 
+		// Close Files
 		source.close();
 		target.close();
 	}
-	else if((char)argv[1][0] == (char)"w"[0])
+	else if((char)argv[1][0] == (char)"w"[0]) // Check if writing is the specified operation
 	{
 		int tempNum,
 			numHigh,
 			numLow;
 
+		// Open Files
 		std::ifstream source(argv[2]);
-		if(!source.is_open())
-		{
-			std::cout << "Error: The source file failed to open" << std::endl;
-			return 0;
-		}
-
 		std::ofstream target(argv[3], std::ios::binary | std::ios::trunc);
-		if(!target.is_open())
+
+		// Verify that the files are open
+		if(!verifyFileOpen(source, target))
 		{
-			std::cout << "Error: The target file failed to open" << std::endl;
 			return 0;
 		}
 
+		// Convert ASCII numbers to binary and write to the target.
 		while(source >> numLow)
 		{	
 			numHigh = 0;
@@ -80,6 +79,7 @@ int main(int argc, char** argv)
 			target << (char)numHigh << (char)numLow;
 		}
 
+		// Close Files
 		source.close();
 		target.close();
 	}
@@ -89,6 +89,23 @@ int main(int argc, char** argv)
 		return 0;
 	}
 
-	std::cout << "\n    Done!" << std::endl;
+	std::cout << "Done!" << std::endl;
+	return 1;
+}
+
+bool verifyFileOpen(std::ifstream & source, std::ofstream & target)
+{
+	if(!source.is_open())
+	{
+		std::cout << "Error: The source file failed to open" << std::endl;
+		return 0;
+	}
+
+	if(!target.is_open())
+	{
+		std::cout << "Error: The target file failed to open" << std::endl;
+		return 0;
+	}
+
 	return 1;
 }
