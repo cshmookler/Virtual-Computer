@@ -1,5 +1,5 @@
 # Virtual Computer
-A simulation of a reduced instruction-set computer. Made with C++ and OpenGL.
+A simulation of a reduced instruction-set computer. Made with C++, OpenGL, and FreeGLUT.
 
 ## Computer Specifications and Behavior
 The virtual computer is a simulation of a theoretical microprocessor. It is designed to function just like it would when made of semiconductors instead of code. The virtual computer has 4096 words of RAM. A word is 16 bits long. On startup, the contents of data/bin_data/rom.dat are read and stored in RAM. The virtual computer, starting at RAM position 0, executes instructions read from RAM. An instruction is one word (16 bits) long. It consists of an op-code (first 4 bits), and an operand (last 12 bits). The op-code denotes the instruction to be executed, and the operand is the information being operated on.
