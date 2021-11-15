@@ -9,7 +9,7 @@ Instruction set list coming soon.
 Please contact the project leader (cshmookler) if you have any questions.
 
 ## Project Status
-This project is in the alpha stage of development. Some key features are not yet present (access to peripheral devices).
+This project is in the alpha stage of development. Some key features are not yet present (such as access to peripheral devices).
 
 ## Compilation instructions
 Coming soon.
