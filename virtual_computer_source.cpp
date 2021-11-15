@@ -7,25 +7,27 @@
 //    http://freeglut.sourceforge.net/docs/api.php
 //    https://en.wikibooks.org/wiki/OpenGL_Programming
 
+// Read README.md for a brief description of this project
+
 // Declare constants
 
 	// Window constants
-	const char * WIN_DEFAULT_TITLE = "Virtual Computer - Made by Caden Shmookler",
-				  * WIN_OP_LOG_DIR = "operation_log.txt";
+	const char * WIN_DEFAULT_TITLE = "Virtual Computer",
+			   * WIN_OP_LOG_DIR = "operation_log.txt";
 
 	const int WIN_POS_X = 500,
-				 WIN_POS_Y = 500,
-				 WIN_WIDTH = 600,
-				 WIN_HEIGHT = 600,
-				 PIXEL_COUNT_X = 32,
-				 PIXEL_COUNT_Y = 32;
+			  WIN_POS_Y = 500,
+			  WIN_WIDTH = 600,
+			  WIN_HEIGHT = 600,
+			  PIXEL_COUNT_X = 32,
+			  PIXEL_COUNT_Y = 32;
 
 	const GLfloat PIXEL_SIZE_X = 2.0f / PIXEL_COUNT_X,
-					  PIXEL_SIZE_Y = 2.0f / PIXEL_COUNT_Y;
+				  PIXEL_SIZE_Y = 2.0f / PIXEL_COUNT_Y;
 
 	// Window icon constants
 	const int WIN_ICON_WIDTH = 48,
-				 WIN_ICON_HEIGHT = 48;
+			  WIN_ICON_HEIGHT = 48;
 
 	const char * WIN_ICON_DIR = "assets/icon.ico";
 
@@ -35,58 +37,71 @@
 	// Virtual Computer constants
 	const int VC_CLOCK_SPEED = 1000, // Instructions executed per second
 
-				 VC_RAM_SIZE = 4096,
+			  VC_RAM_SIZE = 4096,
 
-				 // Operation codes
-				 VC_OP_LDA = 0,
-				 VC_OP_LAA = 1,
-				 VC_OP_ADD = 2,
-				 VC_OP_SBD = 3,
-				 VC_OP_ADA = 4,
-				 VC_OP_SBA = 5,
-				 VC_OP_STR = 6,
-				 VC_OP_STD = 7,
-				 VC_OP_SSD = 8,
-				 VC_OP_JMP = 9,
-				 VC_OP_JIZ = 10,
-				 VC_OP_JIE = 11,
-				 VC_OP_JII = 12,
-				 VC_OP_JBT = 13,
-				 VC_OP_GIN = 14,
-				 VC_OP_SOT = 15,
+			  // Operation codes
+			  VC_OP_LDA = 0,
+			  VC_OP_LAA = 1,
+			  VC_OP_ADD = 2,
+			  VC_OP_SBD = 3,
+			  VC_OP_ADA = 4,
+			  VC_OP_SBA = 5,
+			  VC_OP_STR = 6,
+			  VC_OP_STD = 7,
+			  VC_OP_SSD = 8,
+			  VC_OP_JMP = 9,
+			  VC_OP_JIZ = 10,
+			  VC_OP_JIE = 11,
+			  VC_OP_JII = 12,
+			  VC_OP_JBT = 13,
+			  VC_OP_GIN = 14,
+			  VC_OP_SOT = 15,
 
-				 // ALU constants
-				 VC_ALU_ADD = 1,
-				 VC_ALU_SUB = 2,
-				 VC_ALU_OTHER = 3;
+			  // ALU constants
+			  VC_ALU_ADD = 1,
+			  VC_ALU_SUB = 2,
+			  VC_ALU_OTHER = 3;
+
+			  // Constants for pheripherals
 
 	const char * VC_ROM = "data/bin_data/rom.dat",
-				  * VC_DRIVE_1 = "data/bin_data/drive_1.dat";
+			   * VC_DRIVE_1 = "data/bin_data/drive_1.dat";
 
 // Declare variables
 
 	// Pixel color array
 	GLubyte pixelStoredColor[PIXEL_COUNT_X][PIXEL_COUNT_Y][4] = {0},
-			  pixelDisplayColor[PIXEL_COUNT_X][PIXEL_COUNT_Y][4] = {0};
+			pixelDisplayColor[PIXEL_COUNT_X][PIXEL_COUNT_Y][4] = {0};
 
 	// Virtual Computer variables
-		 // All VC variables are set to 0 (zero) by default
+		// All VC variables are set to 0 (zero) by default
 	int ram[VC_RAM_SIZE] = {0},
-		 iar = 0,
-		 rA = 0,
-		 rB = 0,
-		 rC = 0,
-		 aluOp = 0,
+		iar = 0,
+		rA = 0,
+		rB = 0,
+		rC = 0,
+		aluOp = 0,
 
-		 opLog[VC_RAM_SIZE][4] = {0},
-		 opCount = 0;
+		// Temporarily store input sent to from certain output devices
+		VC_IH_cache[4096][2] = {0}, // first is origin device, second is data
+		VC_IH_cache_stored = 0,
+		VC_IH_cache_pos = 0,
+
+		// Temporarily store output sent to certain output devices
+		VC_OH_cache[5] = {0},
+		VC_OH_stored = 0,
+
+		opLog[VC_RAM_SIZE][4] = {0},
+		opCount = 0;
 
 	bool flag[3] = {false},
-		  opOverflow = false;
+		 opOverflow = false;
 
 // Declare and define functions
 bool VC_main(void);
 void VC_alu(int op);
+int VC_IH();
+void VC_OH(int io_device, int operand);
 void VC_updateLog(void);
 void WIN_main(int timerId);
 void WIN_display(void);
@@ -127,7 +142,7 @@ int main(int argc, char** argv)
 
 	char c;
 	int tempNum,
-		 num;
+		num;
 	bool byteType = true;
 	for(int i = 1; i < VC_RAM_SIZE * 2; i++)
 	{
@@ -149,7 +164,7 @@ int main(int argc, char** argv)
 	source.close();
 
 	// Start timers
-	glutTimerFunc(2000 / VC_CLOCK_SPEED, WIN_main, TIMER_MAIN);
+	glutTimerFunc(1000 / VC_CLOCK_SPEED, WIN_main, TIMER_MAIN);
 
 	// Display test
 	for(GLubyte x = 0; x < PIXEL_COUNT_X; x++)
@@ -172,7 +187,7 @@ int main(int argc, char** argv)
 void WIN_main(int timerId)
 {
 	// Reset main timer
-	glutTimerFunc(2000 / VC_CLOCK_SPEED, WIN_main, TIMER_MAIN);
+	glutTimerFunc(1000 / VC_CLOCK_SPEED, WIN_main, TIMER_MAIN);
 
 	// Virtual Computer executes one instruction and updates the display if requested
 	if(VC_main() == 1)
@@ -299,6 +314,8 @@ bool VC_main(void)
 			rC = rA_temp;
 			aluOp = VC_ALU_OTHER;
 			VC_alu(aluOp);
+			opLog[opCount][2] = rC;
+			opLog[opCount][3] = operand;
 			break;
 		}
 		case VC_OP_JMP:
@@ -361,15 +378,14 @@ bool VC_main(void)
 			break;
 		}
 		case VC_OP_GIN:
-
-			// Figure this out
-
+			ram[operand] = VC_IH();
+			opLog[opCount][2] = operand;
+			opLog[opCount][3] = ram[operand];
 			break;
 		case VC_OP_SOT:
-
-			// Figure this out
-			std::cout << ram[operand] << std::endl;
-
+			VC_OH(rA, operand);
+			opLog[opCount][2] = rA;
+			opLog[opCount][3] = operand;
 			break;
 	}
 
@@ -435,6 +451,50 @@ void VC_alu(int op)
 		flag[0] = true;
 	else
 		flag[0] = false;
+}
+
+int VC_IH(bool operation, int word = 0)
+{
+	if(operation == true) // write to the IH
+	{
+		VC_IH_cache_pos += 1;
+		if(VC_IH_cache_pos >= 4096)
+		{
+			VC_IH_cache_pos = 0;
+		}
+
+		VC_IH_cache[VC_IH_cache_pos] = word;
+
+		VC_IH_cache_stored += 1;
+
+		return 0;
+	}
+	else // read from the IH
+	{
+		if(VC_IH_cache_stored != 0)
+		{
+			int oldPos = VC_IH_cache_pos;
+
+			VC_IH_cache_pos -= 1;
+			if(VC_IH_cache_pos < 0)
+			{
+				VC_IH_cache_pos = 4095;
+			}
+
+			VC_IH_cache_stored -= 1;
+
+			return VC_IH_cache[oldPos]
+		}
+		else
+		{
+			return 0;
+		}
+	}
+}
+
+void VC_OH(int io_device, int operand)
+{
+
 }
 
 void VC_updateLog(void)
@@ -506,16 +566,10 @@ void VC_updateLog(void)
 					target << "did not jump   | one or more of the selected bits were false";
 				break;
 			case VC_OP_GIN:
-				target << "GIN | ";
-
-				// Figure this out
-
+				target << "GIN | ram[" << opLog[i][2] << "] <= " << opLog[i][3];
 				break;
 			case VC_OP_SOT:
-				target << "SOT | ";
-
-				// Figure this out
-
+				target << "SOT | outputDevice(" << opLog[i][2] << ") <= " << opLog[i][3];
 				break;
 		}
 
