@@ -1,5 +1,4 @@
 #include <GL/freeglut.h>
-#include <sstream>
 #include <iostream>
 #include <fstream>
 
@@ -60,9 +59,11 @@
 			  // ALU constants
 			  VC_ALU_ADD = 1,
 			  VC_ALU_SUB = 2,
-			  VC_ALU_OTHER = 3;
+			  VC_ALU_OTHER = 3,
 
 			  // Constants for pheripherals
+			  VC_OH_SYS = 1,
+			  VC_OH_MBK = 2;
 
 	const char * VC_ROM = "data/bin_data/rom.dat",
 			   * VC_DRIVE_1 = "data/bin_data/drive_1.dat";
@@ -88,8 +89,10 @@
 		VC_IH_cache_pos = 0,
 
 		// Temporarily store output sent to certain output devices
-		VC_OH_cache[5] = {0},
-		VC_OH_stored = 0,
+		VC_OH_SYS_cache = 0,
+		VC_OH_SYS_stored = 0,
+		VC_OH_MBK_cache = 0,
+		VC_OH_MBK_stored = 0,
 
 		opLog[VC_RAM_SIZE][4] = {0},
 		opCount = 0;
@@ -378,12 +381,12 @@ bool VC_main(void)
 			break;
 		}
 		case VC_OP_GIN:
-			ram[operand] = VC_IH();
+			ram[operand] = VC_IH(0); // Read from the IH
 			opLog[opCount][2] = operand;
 			opLog[opCount][3] = ram[operand];
 			break;
 		case VC_OP_SOT:
-			VC_OH(rA, operand);
+			VC_OH(rA, operand); // Send output
 			opLog[opCount][2] = rA;
 			opLog[opCount][3] = operand;
 			break;
@@ -494,7 +497,15 @@ int VC_IH(bool operation, int word = 0)
 
 void VC_OH(int io_device, int operand)
 {
+	switch(io_device)
+	{
+		case VC_OH_SYS: // Perform operations outside of the CPU and get information about the computer.
+			break;
+		case VC_OH_MBK: // Manage memory banks.
+			break;
+		default: // PRD - Communicate with peripheral devices.
 
+	}
 }
 
 void VC_updateLog(void)
