@@ -34,9 +34,7 @@
 	const int TIMER_MAIN = 1;
 
 	// Virtual Computer constants
-	const int VC_CLOCK_SPEED = 1000, // Instructions executed per second
-
-			  VC_RAM_SIZE = 4096,
+	const int VC_RAM_SIZE = 4096,
 
 			  // Operation codes
 			  VC_OP_LDA = 0,
@@ -83,6 +81,9 @@
 		rC = 0,
 		aluOp = 0,
 
+		// Clock speed
+		clockSpeed = 1000, // Instructions executed per second (hertz)
+
 		// Temporarily store input sent to from certain output devices
 		VC_IH_cache[4096] = {0}, // words with even indices are the origin device and words with odd indices are the input data
 		VC_IH_cache_stored = 0,
@@ -90,26 +91,27 @@
 
 		// Temporarily store output sent to certain output devices
 		VC_OH_SYS_cache = 0,
-		VC_OH_SYS_stored = 0,
 		VC_OH_MBK_cache = 0,
-		VC_OH_MBK_stored = 0,
 
 		opLog[VC_RAM_SIZE][4] = {0},
 		opCount = 0;
 
 	bool flag[3] = {false},
-		 opOverflow = false;
+		 opOverflow = false,
+		 VC_OH_SYS_cache_stored = false,
+		 VC_OH_MBK_cache_stored = false;
 
 // Declare and define functions
 bool VC_main(void);
 void VC_alu(int op);
-int VC_IH();
-void VC_OH(int io_device, int operand);
+int VC_inputHandler();
+void VC_outputHandler(int io_device, int operand);
 void VC_updateLog(void);
 void WIN_main(int timerId);
 void WIN_display(void);
 void WIN_sizeChange(int w, int h);
 
+// Program execution starts here
 int main(int argc, char** argv)
 {
 	// Init GLUT and create a window
@@ -130,9 +132,9 @@ int main(int argc, char** argv)
 	glClearColor(255, 255, 255, 0); // White
  
 	// Register callbacks
-	glutDisplayFunc(WIN_display);    // Called to render the window
+	glutDisplayFunc(WIN_display);    // Called to re-draw the window
 	glutReshapeFunc(WIN_sizeChange); // Called when the window size is changed
-	glutCloseFunc(VC_updateLog);
+	glutCloseFunc(VC_updateLog);	 // Called to update the contents of the log file when the program closes
 
 	// Init Virtual Computer
 	// Load data from ROM to RAM
@@ -186,7 +188,7 @@ int main(int argc, char** argv)
 	return 1;
 }
 
-// This function is called before an instruction is executed in the virtual computer
+// Called before an instruction is executed in the virtual computer
 void WIN_main(int timerId)
 {
 	// Reset main timer
@@ -197,6 +199,7 @@ void WIN_main(int timerId)
 		WIN_display();
 }
 
+// Called to re-draw the window
 void WIN_display(void)
 {
 	// Clear color buffer
@@ -234,11 +237,15 @@ void WIN_display(void)
 	glutSwapBuffers();
 }
 
+// Called when the window is resized
 void WIN_sizeChange(int w, int h)
 {
 	glutReshapeWindow(WIN_WIDTH, WIN_HEIGHT);
 }
 
+// All of the following functions manage the behavior of the virtual computer
+
+// Execute one instruction in the virtual computer
 bool VC_main(void)
 {
 	// Get instruction
@@ -296,7 +303,6 @@ bool VC_main(void)
 			opLog[opCount][3] = operand;
 			break;
 		case VC_OP_STD:
-		{
 			rC = ~(~rA | rB);
 			ram[operand] = rC;
 			aluOp = VC_ALU_OTHER;
@@ -304,7 +310,6 @@ bool VC_main(void)
 			opLog[opCount][2] = rC;
 			opLog[opCount][3] = operand;
 			break;
-		}
 		case VC_OP_SSD:
 		{
 			int rA_temp = rA;
@@ -366,7 +371,6 @@ bool VC_main(void)
 			}
 			break;
 		case VC_OP_JBT:
-		{
 			if(rA & rB == rB)
 			{
 				iar = operand;
@@ -379,14 +383,13 @@ bool VC_main(void)
 				opLog[opCount][2] = 0;
 			}
 			break;
-		}
 		case VC_OP_GIN:
-			ram[operand] = VC_IH(0); // Read from the IH
+			ram[operand] = VC_inputHandler(false); // Read from the IH
 			opLog[opCount][2] = operand;
 			opLog[opCount][3] = ram[operand];
 			break;
 		case VC_OP_SOT:
-			VC_OH(rA, operand); // Send output
+			VC_outputHandler(rA, operand); // Send output
 			opLog[opCount][2] = rA;
 			opLog[opCount][3] = operand;
 			break;
@@ -411,6 +414,7 @@ bool VC_main(void)
 	return 0;
 }
 
+// Perform operations in the alu
 void VC_alu(int op)
 {
 	long temp;
@@ -456,7 +460,8 @@ void VC_alu(int op)
 		flag[0] = false;
 }
 
-int VC_IH(bool operation, int word = 0)
+// Read or write to the Input Handler
+int VC_inputHandler(bool operation, int word = 0)
 {
 	if(operation == true) // write to the IH
 	{
@@ -486,7 +491,7 @@ int VC_IH(bool operation, int word = 0)
 
 			VC_IH_cache_stored -= 1;
 
-			return VC_IH_cache[oldPos]
+			return VC_IH_cache[oldPos];
 		}
 		else
 		{
@@ -495,19 +500,71 @@ int VC_IH(bool operation, int word = 0)
 	}
 }
 
-void VC_OH(int io_device, int operand)
+// Send data to output devices via the Output Handler
+void VC_outputHandler(int io_device, int operand)
 {
 	switch(io_device)
 	{
-		case VC_OH_SYS: // Perform operations outside of the CPU and get information about the computer.
+		case VC_OH_SYS: // Perform operations outside of the CPU and get information about the computer
+			if(VC_OH_SYS_stored == false)
+			{
+				// Perform actions that only require one word of data
+				switch(operand)
+				{
+					case 0: // Send the clock speed of the virtual computer to the input handler
+						VC_inputHandler(true, VC_OH_SYS);
+						VC_inputHandler(true, clockSpeed);
+						break;
+					// Store the operand for use in operations that require two words of data
+					case 1:
+						VC_OH_SYS_cache = operand;
+						VC_OH_SYS_cache_stored = true;
+						break;
+					default:
+						// Don't do anything
+				}
+			}
+			else
+			{
+				// Perform actions that require two words of data
+				switch(VC_OH_SYS_cache)
+				{
+					case 1: // Set the clock speed of the virtual computer
+						clockSpeed = operand;
+						break;
+					default:
+						// don't do anything
+				}
+				VC_OH_SYS_cache_stored = false;
+			}
 			break;
 		case VC_OH_MBK: // Manage memory banks.
+			if(VC_OH_MBK_stored == false)
+			{
+				// Store the operand for use in operations that require two words of data
+				VC_OH_MBK_cache = operand;
+				VC_OH_MBK_cache_stored = true;
+			}
+			else
+			{
+				// Perform actions
+				switch(VC_OH_MBK_cache)
+				{
+					case 1:
+						
+						break;
+					default:
+						// don't do anything
+				}
+				VC_OH_MBK_cache_stored = false;
+			}
 			break;
 		default: // PRD - Communicate with peripheral devices.
 
 	}
 }
 
+// Called to update the contents of the log file when the program closes
 void VC_updateLog(void)
 {
 	std::ofstream target(WIN_OP_LOG_DIR, std::ios::trunc);
