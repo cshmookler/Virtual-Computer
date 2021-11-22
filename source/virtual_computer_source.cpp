@@ -12,7 +12,8 @@
 // Declare constants
 
 	// Window constants
-	const char * WIN_DEFAULT_TITLE = "Virtual Computer";
+	const char * WIN_DEFAULT_TITLE = "Virtual Computer",
+			   * WIN_ICON_DIR = "assets/icon.ico";
 
 	const int WIN_POS_X = 500,
 			  WIN_POS_Y = 500,
@@ -20,24 +21,24 @@
 			  WIN_HEIGHT = 600,
 			  PIXEL_COUNT_X = 32,
 			  PIXEL_COUNT_Y = 32,
+			  WIN_ICON_WIDTH = 48,
+			  WIN_ICON_HEIGHT = 48,
 			  TITLE_REFRESH_PERIOD = 1000; // ms between each title refresh
 
 	const GLfloat PIXEL_SIZE_X = 2.0f / PIXEL_COUNT_X,
 				  PIXEL_SIZE_Y = 2.0f / PIXEL_COUNT_Y;
 
-	// Window icon constants
-	const int WIN_ICON_WIDTH = 48,
-			  WIN_ICON_HEIGHT = 48;
-
-	const char * WIN_ICON_DIR = "assets/icon.ico";
-
-	// Timer constants
+			  // Timer constants
 	const int WIN_CREATE_WINDOW = 0,
 			  TIMER_VC = 1,
-			  TIMER_TITLE_REFRESH = 2;
+			  TIMER_TITLE_REFRESH = 2,
+
+			  // External device constants
+			  WIN_KEYBOARD = 2,
+			  WIN_MOUSE = 3;
 
 	// Virtual Computer constants
-	const int VC_RAM_SIZE = 4096,
+	const int VC_RAM_SIZE = 4096, // The size of ram (in 16 bit words)
 
 			  // Operation codes
 			  VC_OP_LDA = 0,
@@ -66,7 +67,7 @@
 			  VC_OH_SYS = 1,
 			  VC_OH_MBK = 2;
 
-	// Directories
+				 // Directories
 	const char * VC_OP_LOG_DIR = "operation_log.txt",
 			   * VC_ROM_DIR = "data/bin_data/rom.dat",
 			   * VC_DRIVE_1_DIR = "data/bin_data/drive_1.dat";
@@ -91,7 +92,8 @@
 		aluOp = 0,
 
 		// Clock speed
-		clockSpeed = -1, // Instructions executed per second (frequency of the clock in hertz)
+		clockSpeed = 1001, // Instructions executed per second (frequency of the clock in hertz)
+						// If clockSpeed > 1000, there is no delay between the execution of instructions
 
 		// Temporarily store input sent to from certain output devices
 		VC_IH_cache[VC_RAM_SIZE] = {0}, // words with even indices are the origin device and words with odd indices are the input data
@@ -110,12 +112,12 @@
 		 VC_OH_SYS_cache_stored = false,
 		 VC_OH_MBK_cache_stored = false;
 
-int var = 0;
-
 // Declare and define functions
 void WIN_display(void);
 void WIN_sizeChange(int w, int h);
 void WIN_generateTitle(int timerId);
+void WIN_keyboard(unsigned char key, int x, int y);
+void WIN_mouse(int button, int state, int x, int y);
 void VC_main(int timerId);
 void VC_alu(int op);
 int VC_inputHandler(bool operation, int word = 0);
@@ -145,6 +147,8 @@ int main(int argc, char** argv)
 	// Register callbacks
 	glutDisplayFunc(WIN_display);    // Called to re-draw the window
 	glutReshapeFunc(WIN_sizeChange); // Called when the window size is changed
+	glutKeyboardFunc(WIN_keyboard);	 // Called when there is a state change on the keyboard
+	glutMouseFunc(WIN_mouse);		 // Called when the mouse is moved or clicked
 	glutCloseFunc(VC_updateLog);	 // Called to update the contents of the log file when the program closes
 
 	// Init Virtual Computer
@@ -263,6 +267,32 @@ void WIN_generateTitle(int timerId)
 
 	// Reset IPS
 	ips = 0;
+}
+
+// Called when there is a state change on the keyboard
+void WIN_keyboard(unsigned char key, int x, int y)
+{
+	// Send keyboard state to the virtual computer via the input handler
+	VC_inputHandler(true, WIN_KEYBOARD);
+	VC_inputHandler(true, (int)key);
+	VC_inputHandler(true, WIN_KEYBOARD);
+	VC_inputHandler(true, x);
+	VC_inputHandler(true, WIN_KEYBOARD);
+	VC_inputHandler(true, y);
+}
+
+// Called when the mouse is moved or clicked
+void WIN_mouse(int button, int state, int x, int y)
+{
+	// Send mouse state to the virtual computer via the input handler
+	VC_inputHandler(true, WIN_MOUSE);
+	VC_inputHandler(true, button);
+	VC_inputHandler(true, WIN_MOUSE);
+	VC_inputHandler(true, state);
+	VC_inputHandler(true, WIN_MOUSE);
+	VC_inputHandler(true, x);
+	VC_inputHandler(true, WIN_MOUSE);
+	VC_inputHandler(true, y);
 }
 
 // All of the following functions determine the behavior of the virtual computer
@@ -546,6 +576,12 @@ void VC_outputHandler(int io_device, int operand)
 						VC_OH_SYS_cache = operand;
 						VC_OH_SYS_cache_stored = true;
 						break;
+					case 2: // Restart the computer
+						// Not currently supported
+						break;
+					case 3: // Shut down the computer
+						glutDestroyWindow(windowId);
+						break;
 					default:
 						// Don't do anything
 						break;
@@ -566,30 +602,14 @@ void VC_outputHandler(int io_device, int operand)
 				VC_OH_SYS_cache_stored = false;
 			}
 			break;
-		case VC_OH_MBK: // Manage memory banks.
-			if(VC_OH_MBK_cache_stored == false)
-			{
-				// Store the operand for use in operations that require two words of data
-				VC_OH_MBK_cache = operand;
-				VC_OH_MBK_cache_stored = true;
-			}
-			else
-			{
-				// Perform actions
-				switch(VC_OH_MBK_cache)
-				{
-					case 1:
-						
-						break;
-					default:
-						// don't do anything
-						break;
-				}
-				VC_OH_MBK_cache_stored = false;
-			}
+		case WIN_KEYBOARD: // Keyboard
+			// Don't do anything (the keyboard is not an output device)
 			break;
-		default: // PRD - Communicate with peripheral devices.
-
+		case WIN_MOUSE:
+			// Don't do anything (the mouse is not an output device)
+			break;
+		default: // PRD - Communicate with other peripheral devices (not including the keyboard and mouse)
+			// Don't do anything (alternate peripheral devices are not supported)
 			break;
 	}
 }
