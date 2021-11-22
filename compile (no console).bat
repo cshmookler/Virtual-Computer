@@ -1,2 +1,2 @@
-g++ virtual_computer_source.cpp -mwindows -lmingw32 -lopengl32 -lglu32 -lfreeglut -o virtual_computer.exe
+g++ source\virtual_computer_source.cpp -mwindows -lmingw32 -lopengl32 -lglu32 -lfreeglut -o virtual_computer.exe
 cmd /k
