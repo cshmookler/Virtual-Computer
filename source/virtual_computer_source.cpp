@@ -93,7 +93,7 @@
 
 		// Clock speed
 		clockSpeed = 1001, // Instructions executed per second (frequency of the clock in hertz)
-						// If clockSpeed > 1000, there is no delay between the execution of instructions
+						   // If clockSpeed > 1000, there is no delay between the execution of instructions
 
 		// Temporarily store input sent to from certain output devices
 		VC_IH_cache[VC_RAM_SIZE] = {0}, // words with even indices are the origin device and words with odd indices are the input data
